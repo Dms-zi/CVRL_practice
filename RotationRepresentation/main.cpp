@@ -62,7 +62,6 @@ int main(){
     complex<double> matrix2Hatz(hatz2Matrix(0,0),hatz2Matrix(1,1));
     cout << "Unit Complex Number from Rotation Matrix: \n" << matrix2Hatz << endl;
 
-
     // 3D Rotation
 
     // 7. Euler Angles -> Rotation Matrix
