@@ -62,21 +62,82 @@ int main(){
     complex<double> matrix2Hatz(hatz2Matrix(0,0),hatz2Matrix(1,1));
     cout << "Unit Complex Number from Rotation Matrix: \n" << matrix2Hatz << endl;
 
+
     // 3D Rotation
+    Isometry3d T = Isometry3d::Identity();
+    T.rotate(AngleAxisd(theta, Vector3d(0,0,1))); //or Vector3d(UnitZ);
+
+
+    // 8. Rotation Matrix -> Euler Angles
+    Matrix3d R_matrix = T.rotation();
+    Vector3d matrix2Euler = R_matrix.eulerAngles(2,1,0);
+    cout << "Euler from Rotation Matrix : \n" << R_matrix.transpose() << endl;
+
+
+    // 10. Rotation Matrix -> Axis Angle
+    AngleAxisd matrix2AxisAngle = AngleAxisd(R_matrix);
+    cout << "AxisAngle from Matri(axis): \n" << matrix2AxisAngle.axis().transpose() << endl;
+    cout << "AxisAngle from Matri(angle): \n" << matrix2AxisAngle.angle() << endl;
+
+
+    // 14. Rotation Matrix -> Unit Quaternion
+    Quaterniond matrix2Quaternion(R_matrix);
+    cout << "Unit Quaternion from Rotation Matrix: \n" << matrix2Quaternion.coeffs().transpose() << endl;
+
+
+    // 9. Axis-Angle -> Rotation Matrix
+    Matrix3d axisangle2Matrix = matrix2AxisAngle.toRotationMatrix();
+    cout << "Rotation Matrix from AngleAxis : \n " << axisangle2Matrix << endl;
+    
+
+    // 11. Axis-Angle -> Unit Quaternion
+    Quaterniond axisangle2Quaternion(matrix2AxisAngle); 
+    cout << "Unit Quaternion from Axis-Angle: \n" << axisangle2Quaternion.coeffs().transpose() << endl;
+
+
+    // 18. Axis-Angle -> Euler Angles
+    // convert AxisAngle to Rotation Matrix first
+    Vector3d axisangle2Euler = matrix2AxisAngle.toRotationMatrix().eulerAngles(2,1,0);
+    cout << "Euler Angles from Axis-Angle: \n" << axisangle2Euler.transpose() << endl;
+
+
+    // 12. Unit Quaternion -> Axis-Angle
+    AngleAxisd quaternion2AxisAngle(axisangle2Quaternion);
+    cout << "Axis-Angle from Unit Quaternion(Axis) : \n" << quaternion2AxisAngle.axis().transpose() << endl;
+    cout << "Axis-Angle from Unit Quaternion(Angle) : \n" << quaternion2AxisAngle.angle() << endl;
+
+
+    // 13. Unit Quaternion -> Rotation Matrix 
+    Matrix3d quaternion2Matrix = axisangle2Quaternion.toRotationMatrix();
+    cout << "Rotation Matrix from Unit Quaternion: \n" << quaternion2Matrix.transpose() << endl;
+
+
+    // 16. Unit Quaternion -> Euler ANgles
+    // convert Quaternion to Rotation Matrix first
+    Vector3d quaternion2Euler = axisangle2Quaternion.toRotationMatrix().eulerAngles(2,1,0);
+    cout << "Euler Angle from Unit Quaternion: \n " << quaternion2Euler.transpose() << endl;
+
 
     // 7. Euler Angles -> Rotation Matrix
-    // 8. Rotation Matrix -> Euler Angles
-    // 9. Axis-Angle -> Rotation Matrix
-    // 10. Rotation Matrix -> Axis Angle
-    // 11. Axis-Angle -> Unit Quaternion
-    // 12. Unit Quaternion -> Axis-Angle
-    // 13. Unit Quaternion -> Rotation Matrix 
-    // 14. Rotation Matrix -> Unit Quaternion
+    // Vector3d(Euler Angle) has not .matrix()
+    Matrix3d euler2Matrix;
+    euler2Matrix = AngleAxisd(matrix2Euler(0), Vector3d::UnitZ()) *
+                   AngleAxisd(matrix2Euler(1), Vector3d::UnitY()) *
+                   AngleAxisd(matrix2Euler(2), Vector3d::UnitX());
+    cout << "Matrix from EulerAngles : \n" << euler2Matrix.transpose() << endl;
+
+
     // 15. Euler Angles -> Unit Quaternion
-    // 16. Unit Quaternion -> Euler ANgles
+    // convert Euler Angles to Rotation Matrix first
+    Quaterniond euler2Quaternion(euler2Matrix);
+    cout << "Unit Quaternion from Euler Angles: \n" << euler2Quaternion.coeffs().transpose() << endl;
+
+
     // 17. Euler Angles -> Axis-Angle
-    // 18. Axis-Angle -> Euler Angles
+    // convert Euler Angles to Rotation Matrix first
+    AngleAxisd euler2AxisAngle(euler2Matrix);
+    cout << "Axis Angle from Euler Angles: \n" << euler2AxisAngle.axis().transpose() << endl;
+    cout << "Axis Angle from Euler Angles: \n" << euler2AxisAngle.angle() << endl;
 
-
-
+    return 0;
 }
