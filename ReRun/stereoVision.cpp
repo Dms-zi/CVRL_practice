@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(0, 96, 9, 8 * 9 * 9, 32 * 9 * 9, 1, 63, 10, 100, 32);    
     cv::Mat disparity_sgbm, disparity;
     sgbm->compute(left, right, disparity_sgbm);
-    disparity_sgbm.convertTo(disparity, CV_32F, 1.0 / 16.0f);
+    disparity_sgbm.convertTo(disparity, CV_8U, 255.0 / 96.0);
 
     vector<Eigen::Vector3f> pointcloud;
     vector<rerun::Color> colors;
@@ -45,6 +45,7 @@ int main(int argc, char **argv)
             point[1] = y * depth; 
             point[2] = depth;
 
+
             float intensity = left.at<uchar>(v, u);
             colors.push_back(rerun::Color(intensity, intensity, intensity));
 
@@ -53,25 +54,54 @@ int main(int argc, char **argv)
         }
     }
     
+
     // cv::Mat to rerun::Collection
     rerun::Collection<uint8_t> left_collection = rerun::CollectionAdapter<uint8_t, cv::Mat>()(left);
     rerun::Collection<uint8_t> right_collection = rerun::CollectionAdapter<uint8_t, cv::Mat>()(right);
+
     // Vector to rerun::Collection
     rerun::Collection<rerun::Position3D> pointcloud_collection = rerun::CollectionAdapter<rerun::Position3D, std::vector<Eigen::Vector3f>>()(pointcloud);
 
+    //disparity map to rerun::Collection
+    rerun::Collection<uint8_t> disparity_collection = rerun::CollectionAdapter<uint8_t, cv::Mat>()(disparity);
     const auto rec = rerun::RecordingStream("stereoVision example with OpenCV");
     // rec.spawn().exit_on_failure();
 
+
     // Draw stereo left image
-    rec.log("left_image",
-            rerun::archetypes::Image::from_grayscale8(left_collection,{static_cast<uint32_t>(left.cols), static_cast<uint32_t>(left.rows)}));
-    rec.log("right_image",
-            rerun::archetypes::Image::from_grayscale8(right_collection,{static_cast<uint32_t>(right.cols), static_cast<uint32_t>(right.rows)}));
-    // pinhole camera model
-    rec.log("stereo_camera",
-            rerun::Pinhole(rerun::Pinhole::from_focal_length_and_resolution({fx, fy}, {static_cast<float>(left.cols), static_cast<float>(left.rows)})));
+    rec.log
+    (
+        "left_image",
+        rerun::archetypes::Image::from_grayscale8(left_collection,{static_cast<uint32_t>(left.cols), static_cast<uint32_t>(left.rows)})
+    );
+
+    // Draw stereo right image
+    rec.log
+    (
+        "right_image",
+        rerun::archetypes::Image::from_grayscale8(right_collection,{static_cast<uint32_t>(right.cols), static_cast<uint32_t>(right.rows)})
+    );
+
+    // pinhole camera models
+    rec.log
+    (
+        "stereo_camera",
+        rerun::Pinhole(rerun::Pinhole::from_focal_length_and_resolution({fx, fy}, {static_cast<float>(left.cols), static_cast<float>(left.rows)}))
+    );
+
     // point cloud
-    rec.log("world/landmarks", rerun::Points3D(pointcloud_collection).with_colors(colors));
+    rec.log
+    (
+        "world/landmarks", rerun::Points3D(pointcloud_collection).with_colors(colors)
+    );
+
+    // disparity map
+    rec.log
+    (
+        "stereo/disparity",
+        rerun::archetypes::Image::from_grayscale8(disparity_collection,
+        {static_cast<uint32_t>(disparity.cols), static_cast<uint32_t>(disparity.rows)})
+    );
 
     // save the recording
     rec.save("stereoVision_example.rrd").exit_on_failure();
