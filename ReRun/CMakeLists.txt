@@ -21,8 +21,11 @@ add_executable(plotArrow plotArrow.cpp)
 target_include_directories(plotArrow PUBLIC ${EIGEN3_INCLUDE_DIRS})
 
 add_executable(stereoVision stereoVision.cpp)
+
 target_include_directories(stereoVision PUBLIC ${EIGEN3_INCLUDE_DIRS})
 target_include_directories(stereoVision PUBLIC ${OpenCV_INCLUDE_DIRS})
+
+
 # Download the rerun_sdk
 include(FetchContent)
 FetchContent_Declare(rerun_sdk URL
@@ -30,6 +33,7 @@ FetchContent_Declare(rerun_sdk URL
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Link against rerun_sdk.
+target_link_libraries(stereoVision PRIVATE ${OpenCV_LIBS})
 target_link_libraries(tutorial PRIVATE rerun_sdk)
 target_link_libraries(plotTrajectory PRIVATE rerun_sdk)
 target_link_libraries(plotArrow  PRIVATE rerun_sdk)
