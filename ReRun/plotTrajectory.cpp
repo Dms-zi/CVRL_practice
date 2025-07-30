@@ -59,24 +59,28 @@ int main(int argc, char **argv)
             static_cast<float>(tz)));  
     }
 
-    cout << "Loaded " << ts.size() << " points" <<endl;
+    // print data
+
+    //  cout << "Loaded " << ts.size() << " points" <<endl;
 
     // for (size_t i = 0; i < q.size(); ++i) 
     // {
     //      auto quat = static_cast<Quaternion>(q[i]);
 
-    //      cout << "Index " << i << ": "
-    //           << "w = " << quat.w()
-    //           << ", x = " << quat.x()
-    //           << ", y = " << quat.y()
-    //           << ", z = " << quat.z()
-    //           << endl;
+    // cout << "Index " << i << ": "
+    //      << "w = " << quat.w()
+    //      << ", x = " << quat.x()
+    //      << ", y = " << quat.y()
+    //      << ", z = " << quat.z()
+    //      << endl;
     // }
 
     // for (size_t i = 0; i < ts.size(); ++i) 
     // {
     // cout << "timestamp[" << i << "] = " << ts[i] << " ns" << endl;
     // }
+
+
     const auto rec = rerun::RecordingStream("plotTrajectory with Rerun");
     rec.spawn().exit_on_failure();
 
@@ -99,7 +103,6 @@ int main(int argc, char **argv)
         .with_many_quaternion(q)
         .columns()
     );
-
 
     LineStrip3D trajectory(t);
 
