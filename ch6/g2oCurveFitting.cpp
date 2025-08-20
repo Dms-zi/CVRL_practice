@@ -1,0 +1,132 @@
+#include <iostream>
+#include <opencv2/core/core.hpp>
+#include <g2o/core/g2o_core_api.h>
+#include <g2o/core/base_unary_edge.h>
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/core/optimization_algorithm_gauss_newton.h>
+#include <g2o/core/optimization_algorithm_dogleg.h>
+#include <g2o/solvers/dense/linear_solver_dense.h>
+#include <Eigen/Core>
+#include <cmath>
+#include <chrono>
+
+// cd build
+// cmake ..
+// make LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 ./g2oCurveFitting
+
+
+
+using namespace std;
+
+class CurveFittingVertex : public g2o::BaseVertex<3, Eigen::Vector3d>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    virtual void setToOriginImpl() override
+    {
+        _estimate << 0, 0, 0; // Initialize parameters to zero
+    }
+
+    virtual void oplusImpl(const double *update) override
+    {
+        _estimate += Eigen::Vector3d(update);
+    }
+
+    virtual bool read(istream & in){}
+    virtual bool write(ostream & out) const {}
+
+};
+
+class CurveFittingEdge : public g2o::BaseUnaryEdge<1, double, CurveFittingVertex>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    CurveFittingEdge(double x) : BaseUnaryEdge(), _x(x) {}
+
+    virtual void computeError() override
+    {
+        const CurveFittingVertex *v = static_cast<const CurveFittingVertex *>(_vertices[0]);
+        const Eigen::Vector3d &params = v->estimate();
+        double y_estimated = exp(params[0] * _x * _x + params[1] * _x + params[2]);
+        _error[0] = _measurement - y_estimated; // residual
+    }
+
+    // Jacobian of the error function
+    virtual void linearizeOplus() override
+    {
+        const CurveFittingVertex *v = static_cast<const CurveFittingVertex *>(_vertices[0]);
+        const Eigen::Vector3d &params = v->estimate();
+        double y_estimated = exp(params[0] * _x * _x + params[1] * _x + params[2]);
+        _jacobianOplusXi[0] = -_x * _x * y_estimated; // derivative w.r.t. ae
+        _jacobianOplusXi[1] = -_x * y_estimated; // derivative w.r.t. be
+        _jacobianOplusXi[2] = -y_estimated; // derivative w.r.t. ce
+    }
+    
+    virtual bool read(istream & in) {}
+    virtual bool write(ostream & out) const {}
+
+    public:
+        double _x; // x value for the edge
+};
+
+int main(int argc, char **argv) 
+{
+    double ar = 1.0, br = 2.0, cr = 1.0;      
+    double ae = 2.0, be = -1.0, ce = 5.0;      
+    int N = 100;                                
+    double w_sigma = 1.0;                   
+    double inv_sigma = 1.0 / w_sigma;
+    cv::RNG rng;                            
+
+    vector<double> x_data, y_data;     
+    for (int i = 0; i < N; i++) 
+    {
+        double x = i / 100.0;
+        x_data.push_back(x);
+        y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
+    }
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<3, 1>> BlockSolverType;
+    typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType;
+
+    auto linearSolver = new LinearSolverType();
+    auto blockSolver = new BlockSolverType(std::unique_ptr<LinearSolverType>(linearSolver));
+    auto solver = new g2o::OptimizationAlgorithmGaussNewton(std::unique_ptr<BlockSolverType>(blockSolver));
+
+    g2o::SparseOptimizer optimizer;
+    optimizer.setAlgorithm(solver);
+    optimizer.setVerbose(true);
+
+    CurveFittingVertex *v = new CurveFittingVertex();
+    v->setEstimate(Eigen::Vector3d(ae,be,ce)); 
+    v->setId(0);
+    optimizer.addVertex(v);
+
+
+    for (int i = 0; i < N; i++)
+    {
+        CurveFittingEdge *edge = new CurveFittingEdge(x_data[i]);
+        edge->setId(i);
+        edge->setMeasurement(y_data[i]);
+        edge->setInformation(Eigen::Matrix<double,1,1>::Identity() *1 /(w_sigma * w_sigma)); // information matrix
+        edge->setVertex(0, v); // associate edge with vertex
+        optimizer.addEdge(edge);
+
+    }
+
+    cout << "Starting optimization..." << endl;
+    chrono::steady_clock::time_point start = chrono::steady_clock::now();
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    cout << "Optimization finished in " << duration.count() << " ms" << endl;
+
+    Eigen::Vector3d estimated_params = v->estimate();
+    cout << "Estimated model " << estimated_params.transpose() << endl;
+
+    return 0;
+}
